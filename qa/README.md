@@ -348,4 +348,4 @@ npm run test:report
 - [Vikunja API Documentation](https://vikunja.io/docs/api-documentation/)
 - [TypeScript Documentation](https://www.typescriptlang.org/)
 
-**Status**: ✅ Ready for code review and submission
+**Status**: ✅ Ready for code review and submission.
