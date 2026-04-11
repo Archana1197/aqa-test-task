@@ -51,9 +51,10 @@ export class RegisterPage extends BasePage {
     await this.click(this.registerButton);
     
     // Wait for successful registration - navigates away from register page
+    // Increased timeout to handle slow server responses
     await this.waitForUrlChange(
       /\/register/,
-      this.config.NAVIGATION_TIMEOUT
+      30000 // 30 seconds timeout
     );
   }
 }

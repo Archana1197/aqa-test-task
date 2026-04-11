@@ -1,4 +1,6 @@
 import { APIRequestContext } from '@playwright/test';
+import { Task, CreateTaskRequest, UpdateTaskRequest, HttpStatusCode } from '../models/api.models';
+import { retryWithBackoff } from '../utils/retry';
 
 /**
  * Task API Helper
@@ -19,17 +21,19 @@ export class TaskAPI {
    * @param taskData - Task creation data
    * @returns Created task object
    */
-  async createTask(token: string, taskData: { title: string; project_id?: number }): Promise<any> {
-    const response = await this.context.put(`${this.baseURL}/api/v1/projects/1/tasks`, {
-      headers: { Authorization: `Bearer ${token}` },
-      data: taskData,
+  async createTask(token: string, taskData: CreateTaskRequest): Promise<Task> {
+    return await retryWithBackoff(async () => {
+      const response = await this.context.post(`${this.baseURL}/api/v1/projects/1/tasks`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: taskData,
+      });
+
+      if (!response.ok()) {
+        throw new Error(`Create task failed: ${response.status()} ${response.statusText()}`);
+      }
+
+      return response.json();
     });
-
-    if (!response.ok()) {
-      throw new Error(`Create task failed: ${response.status()} ${response.statusText()}`);
-    }
-
-    return response.json();
   }
 
   /**
@@ -38,16 +42,18 @@ export class TaskAPI {
    * @param taskId - Task ID
    * @returns Task object
    */
-  async getTask(token: string, taskId: number): Promise<any> {
-    const response = await this.context.get(`${this.baseURL}/api/v1/tasks/${taskId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+  async getTask(token: string, taskId: number): Promise<Task> {
+    return await retryWithBackoff(async () => {
+      const response = await this.context.get(`${this.baseURL}/api/v1/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok()) {
+        throw new Error(`Get task failed: ${response.status()} ${response.statusText()}`);
+      }
+
+      return response.json();
     });
-
-    if (!response.ok()) {
-      throw new Error(`Get task failed: ${response.status()} ${response.statusText()}`);
-    }
-
-    return response.json();
   }
 
   /**
@@ -57,17 +63,19 @@ export class TaskAPI {
    * @param taskData - Updated task data
    * @returns Updated task object
    */
-  async updateTask(token: string, taskId: number, taskData: any): Promise<any> {
-    const response = await this.context.post(`${this.baseURL}/api/v1/tasks/${taskId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      data: taskData,
+  async updateTask(token: string, taskId: number, taskData: UpdateTaskRequest): Promise<Task> {
+    return await retryWithBackoff(async () => {
+      const response = await this.context.post(`${this.baseURL}/api/v1/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: taskData,
+      });
+
+      if (!response.ok()) {
+        throw new Error(`Update task failed: ${response.status()} ${response.statusText()}`);
+      }
+
+      return response.json();
     });
-
-    if (!response.ok()) {
-      throw new Error(`Update task failed: ${response.status()} ${response.statusText()}`);
-    }
-
-    return response.json();
   }
 
   /**
@@ -76,12 +84,14 @@ export class TaskAPI {
    * @param taskId - Task ID
    * @returns HTTP status code
    */
-  async deleteTask(token: string, taskId: number): Promise<number> {
-    const response = await this.context.delete(`${this.baseURL}/api/v1/tasks/${taskId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  async deleteTask(token: string, taskId: number): Promise<HttpStatusCode> {
+    return await retryWithBackoff(async () => {
+      const response = await this.context.delete(`${this.baseURL}/api/v1/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    return response.status();
+      return response.status();
+    });
   }
 
   /**
@@ -90,15 +100,17 @@ export class TaskAPI {
    * @param projectId - Project ID (default: 1 for Inbox)
    * @returns Array of tasks
    */
-  async getAllTasks(token: string, projectId: number = 1): Promise<any[]> {
-    const response = await this.context.get(`${this.baseURL}/api/v1/projects/${projectId}/tasks`, {
-      headers: { Authorization: `Bearer ${token}` },
+  async getAllTasks(token: string, projectId: number = 1): Promise<Task[]> {
+    return await retryWithBackoff(async () => {
+      const response = await this.context.get(`${this.baseURL}/api/v1/projects/${projectId}/tasks`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok()) {
+        throw new Error(`Get all tasks failed: ${response.status()} ${response.statusText()}`);
+      }
+
+      return response.json();
     });
-
-    if (!response.ok()) {
-      throw new Error(`Get all tasks failed: ${response.status()} ${response.statusText()}`);
-    }
-
-    return response.json();
   }
 }

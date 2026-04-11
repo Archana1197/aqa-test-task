@@ -80,6 +80,8 @@ export class Logger {
 
   /**
    * Log test result
+   * @param passed - Whether the test passed
+   * @param message - Result message
    */
   result(passed: boolean, message: string): void {
     const symbol = passed ? '✓' : '✗';
@@ -94,6 +96,8 @@ export class Logger {
 
   /**
    * Format message with timestamp
+   * @param message - Message to format
+   * @returns Formatted message with timestamp
    */
   private formatMessage(message: string): string {
     const timestamp = new Date().toISOString();
@@ -101,5 +105,8 @@ export class Logger {
   }
 }
 
-// Export singleton instance
+/**
+ * Exported logger instance for use across the application
+ * Singleton pattern ensures consistent logging configuration
+ */
 export const logger = Logger.getInstance();

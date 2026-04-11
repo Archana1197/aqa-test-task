@@ -28,22 +28,32 @@ export class LoginPage extends BasePage {
    * @returns Promise<void>
    */
   async navigate(): Promise<void> {
-    await this.navigateToUrl('/');
+    await this.navigateToUrl(AuthSelectors.LOGIN_ROUTE);
   }
 
   /**
-   * Perform login operation
+   * Fill login form and submit without waiting for navigation.
+   * Use this for negative-path tests where login is expected to fail.
    * @param email - User email or username
    * @param password - User password
-   * @returns Promise<void>
-   * @throws Error if login fails
    */
-  async login(email: string, password: string): Promise<void> {
+  async fillAndSubmit(email: string, password: string): Promise<void> {
     await this.waitForVisible(this.emailInput);
     await this.fill(this.emailInput, email);
     await this.fill(this.passwordInput, password);
     await this.click(this.loginButton);
-    
+  }
+
+  /**
+   * Perform login operation and wait for successful navigation.
+   * @param email - User email or username
+   * @param password - User password
+   * @returns Promise<void>
+   * @throws Error if login fails or URL does not change
+   */
+  async login(email: string, password: string): Promise<void> {
+    await this.fillAndSubmit(email, password);
+
     // Wait for successful login - navigates away from login page
     await this.waitForUrlChange(
       /\/login/,

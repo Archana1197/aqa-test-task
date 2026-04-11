@@ -5,6 +5,8 @@ yarn.lock
 
 # Playwright
 .auth/
+test-results/
+playwright-report/
 
 # Build outputs
 dist/

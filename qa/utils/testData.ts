@@ -139,29 +139,6 @@ class TestDataBuilder {
 
 /**
  * Exported test data instance
- * Maintains backward compatibility while providing new builder methods
+ * Provides singleton access to test data generation methods
  */
 export const TestData = TestDataBuilder.getInstance();
-
-/**
- * Legacy test data object for backward compatibility
- * @deprecated Use TestData builder methods instead
- */
-export const testData = {
-  credentials: {
-    validUser: TestData.createDefaultUser(),
-    invalidUser: TestData.createInvalidUser(),
-  },
-
-  tasks: {
-    newTask: TestData.createTask(),
-    updateTask: TestData.createUpdatedTask(),
-  },
-
-  projects: {
-    newProject: TestData.createProject(),
-  },
-
-  generateRandomEmail: () => TestData.generateEmail(),
-  generateRandomUsername: () => TestData.generateUsername(),
-};

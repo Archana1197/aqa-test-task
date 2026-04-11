@@ -1,10 +1,15 @@
 /**
  * Custom error classes for better error handling
  * Follows Exception Handling best practices
+ * 
+ * These error classes provide type-safe error handling for common test scenarios.
+ * Currently unused but available for future implementation.
  */
 
 /**
  * Base test error class
+ * All custom test errors should extend this class
+ * @param message - Error message
  */
 export class TestError extends Error {
   constructor(message: string) {
@@ -16,6 +21,9 @@ export class TestError extends Error {
 
 /**
  * Page navigation error
+ * Thrown when page navigation fails
+ * @param url - The URL that failed to navigate
+ * @param reason - Optional reason for failure
  */
 export class NavigationError extends TestError {
   constructor(url: string, reason?: string) {
@@ -25,6 +33,8 @@ export class NavigationError extends TestError {
 
 /**
  * Element not found error
+ * Thrown when an element cannot be located
+ * @param selector - The selector that failed to find the element
  */
 export class ElementNotFoundError extends TestError {
   constructor(selector: string) {
@@ -34,6 +44,9 @@ export class ElementNotFoundError extends TestError {
 
 /**
  * Timeout error
+ * Thrown when an operation exceeds its timeout
+ * @param action - Description of the action that timed out
+ * @param timeout - Timeout duration in milliseconds
  */
 export class TimeoutError extends TestError {
   constructor(action: string, timeout: number) {
@@ -43,9 +56,13 @@ export class TimeoutError extends TestError {
 
 /**
  * Assertion error
+ * Thrown when a test assertion fails
+ * @param expected - Expected value
+ * @param actual - Actual value received
+ * @param message - Optional additional context
  */
 export class AssertionError extends TestError {
-  constructor(expected: any, actual: any, message?: string) {
+  constructor(expected: unknown, actual: unknown, message?: string) {
     const errorMsg = message 
       ? `${message}\nExpected: ${expected}\nActual: ${actual}`
       : `Expected: ${expected}\nActual: ${actual}`;

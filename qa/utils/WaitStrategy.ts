@@ -3,15 +3,16 @@ import { Page, Locator } from '@playwright/test';
 /**
  * Wait strategy utility class
  * Encapsulates common wait patterns following Strategy Pattern
+ * Provides reusable wait methods for common test scenarios
  * 
  * @class WaitStrategy
  */
 export class WaitStrategy {
   /**
-   * Wait for element count to change
+   * Wait for element count to change to a specific value
    * @param locator - Element locator
    * @param expectedCount - Expected element count
-   * @param timeout - Maximum wait time
+   * @param timeout - Maximum wait time in milliseconds (default: 5000)
    */
   static async waitForCountChange(
     locator: Locator,
@@ -22,10 +23,10 @@ export class WaitStrategy {
   }
 
   /**
-   * Wait for element count to increase
+   * Wait for element count to increase from initial count
    * @param locator - Element locator
    * @param initialCount - Initial element count
-   * @param timeout - Maximum wait time
+   * @param timeout - Maximum wait time in milliseconds (default: 5000)
    */
   static async waitForCountIncrease(
     locator: Locator,
@@ -36,10 +37,10 @@ export class WaitStrategy {
   }
 
   /**
-   * Wait for element count to decrease
+   * Wait for element count to decrease from initial count
    * @param locator - Element locator
    * @param initialCount - Initial element count
-   * @param timeout - Maximum wait time
+   * @param timeout - Maximum wait time in milliseconds (default: 5000)
    */
   static async waitForCountDecrease(
     locator: Locator,
@@ -58,9 +59,9 @@ export class WaitStrategy {
   }
 
   /**
-   * Wait for page navigation
+   * Wait for page navigation to complete
    * @param page - Playwright page instance
-   * @param state - Load state to wait for
+   * @param state - Load state to wait for (default: 'networkidle')
    */
   static async waitForNavigation(
     page: Page,
@@ -72,7 +73,7 @@ export class WaitStrategy {
   /**
    * Wait for element to be actionable (visible and enabled)
    * @param locator - Element locator
-   * @param timeout - Maximum wait time
+   * @param timeout - Maximum wait time in milliseconds (default: 5000)
    */
   static async waitForActionable(
     locator: Locator,
