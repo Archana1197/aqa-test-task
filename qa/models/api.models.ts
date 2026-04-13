@@ -36,6 +36,15 @@ export interface UserInfo {
 }
 
 /**
+ * Project object
+ */
+export interface Project {
+  id: number;
+  title: string;
+  [key: string]: unknown;
+}
+
+/**
  * Task object
  */
 export interface Task {

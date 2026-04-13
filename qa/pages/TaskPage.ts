@@ -37,8 +37,8 @@ export class TaskPage extends BasePage {
    * @returns Promise<void>
    */
   async navigate(): Promise<void> {
-    await this.navigateToUrl(TaskSelectors.OVERVIEW_ROUTE);
-    await this.waitForPageLoad('networkidle');
+    await this.navigateToUrl(TaskSelectors.OVERVIEW_ROUTE, 'domcontentloaded');
+    await this.waitForVisible(this.taskInput);
   }
 
   /**
@@ -48,7 +48,6 @@ export class TaskPage extends BasePage {
    * @throws Error if task creation fails
    */
   async addTask(taskTitle: string): Promise<void> {
-    await this.waitForPageLoad('networkidle');
     const initialCount = await this.getTaskCount();
     
     await this.click(this.taskInput);
@@ -69,10 +68,8 @@ export class TaskPage extends BasePage {
    */
   async getTaskCount(): Promise<number> {
     try {
-      await this.waitForPageLoad('networkidle');
       return await this.taskLinks.count();
-    } catch (error) {
-      // Return 0 if no tasks found or error occurs
+    } catch {
       return 0;
     }
   }

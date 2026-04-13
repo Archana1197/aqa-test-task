@@ -1,5 +1,5 @@
 import { APIRequestContext } from '@playwright/test';
-import { Task, CreateTaskRequest, UpdateTaskRequest, HttpStatusCode } from '../models/api.models';
+import { Task, Project, CreateTaskRequest, UpdateTaskRequest, HttpStatusCode } from '../models/api.models';
 import { retryWithBackoff } from '../utils/retry';
 
 /**
@@ -22,8 +22,9 @@ export class TaskAPI {
    * @returns Created task object
    */
   async createTask(token: string, taskData: CreateTaskRequest): Promise<Task> {
+    const projectId = taskData.project_id ?? 1;
     return await retryWithBackoff(async () => {
-      const response = await this.context.post(`${this.baseURL}/api/v1/projects/1/tasks`, {
+      const response = await this.context.post(`${this.baseURL}/api/v1/projects/${projectId}/tasks`, {
         headers: { Authorization: `Bearer ${token}` },
         data: taskData,
       });
@@ -91,6 +92,25 @@ export class TaskAPI {
       });
 
       return response.status();
+    });
+  }
+
+  /**
+   * Get all projects for the authenticated user
+   * @param token - Authentication token
+   * @returns Array of project objects
+   */
+  async getProjects(token: string): Promise<Project[]> {
+    return await retryWithBackoff(async () => {
+      const response = await this.context.get(`${this.baseURL}/api/v1/projects`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok()) {
+        throw new Error(`Get projects failed: ${response.status()} ${response.statusText()}`);
+      }
+
+      return response.json();
     });
   }
 

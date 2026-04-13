@@ -10,6 +10,8 @@ import { AuthSelectors } from '../config/page.config';
  * @extends BasePage
  */
 export class LoginPage extends BasePage {
+  private static readonly MAX_LOGIN_ATTEMPTS = 3;
+
   // Lazy-loaded locators for better performance
   private get emailInput(): Locator {
     return this.getByLabel(AuthSelectors.LOGIN_EMAIL_LABEL);
@@ -28,7 +30,16 @@ export class LoginPage extends BasePage {
    * @returns Promise<void>
    */
   async navigate(): Promise<void> {
-    await this.navigateToUrl(AuthSelectors.LOGIN_ROUTE);
+    await this.navigateToUrl(AuthSelectors.LOGIN_ROUTE, 'domcontentloaded');
+  }
+
+  private async isRateLimited(): Promise<boolean> {
+    try {
+      await this.page.getByText('Too Many Requests').waitFor({ state: 'visible', timeout: 2000 });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -52,13 +63,27 @@ export class LoginPage extends BasePage {
    * @throws Error if login fails or URL does not change
    */
   async login(email: string, password: string): Promise<void> {
-    await this.fillAndSubmit(email, password);
+    for (let attempt = 1; attempt <= LoginPage.MAX_LOGIN_ATTEMPTS; attempt++) {
+      if (!this.getCurrentUrl().includes(AuthSelectors.LOGIN_ROUTE)) {
+        await this.navigate();
+      }
 
-    // Wait for successful login - navigates away from login page
-    await this.waitForUrlChange(
-      /\/login/,
-      this.config.NAVIGATION_TIMEOUT
-    );
-    await this.waitForPageLoad('networkidle');
+      await this.fillAndSubmit(email, password);
+
+      if (await this.isRateLimited()) {
+        if (attempt === LoginPage.MAX_LOGIN_ATTEMPTS) {
+          throw new Error('Login failed due to repeated 429 Too Many Requests responses.');
+        }
+
+        const backoffMs = 10000 * attempt;
+        await this.page.waitForTimeout(backoffMs);
+        await this.navigate();
+        continue;
+      }
+
+      await this.waitForUrl('/', this.config.NAVIGATION_TIMEOUT);
+      await this.waitForPageLoad('domcontentloaded');
+      return;
+    }
   }
 }

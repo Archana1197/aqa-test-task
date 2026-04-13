@@ -451,6 +451,11 @@ docker-compose logs vikunja
 - Ensure application is fully loaded before running tests
 - Check Docker container health
 
+### 429 Too Many Requests on login
+- If you see repeated `429 Too Many Requests` responses during login, this is an **application-side rate limiting issue**.
+- This is **not** a test automation script issue.
+- The framework already minimizes login calls by reusing authenticated `storageState` per test describe block.
+
 ### Playwright browser not found
 ```bash
 npx playwright install

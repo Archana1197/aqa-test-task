@@ -49,12 +49,6 @@ export class RegisterPage extends BasePage {
     await this.fill(this.emailInput, email);
     await this.fill(this.passwordInput, password);
     await this.click(this.registerButton);
-    
-    // Wait for successful registration - navigates away from register page
-    // Increased timeout to handle slow server responses
-    await this.waitForUrlChange(
-      /\/register/,
-      30000 // 30 seconds timeout
-    );
+    await this.waitForUrl('/', 30000);
   }
 }

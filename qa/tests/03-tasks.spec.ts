@@ -1,7 +1,9 @@
+import path from 'path';
+import fs from 'fs';
 import { test, expect } from '../fixtures/test.fixture';
 import { TestData } from '../utils/testData';
 import { getErrorMessage } from '../utils/errorHandler';
-import { TestConstants } from '../config/page.config';
+import { TestConstants, AuthSelectors } from '../config/page.config';
 
 /**
  * Additional Task Management Tests
@@ -13,18 +15,31 @@ import { TestConstants } from '../config/page.config';
 
 test.describe('Task Management - UI Read Tests', () => {
   let testUser: { username: string; email: string; password: string };
+  // Deterministic path via __dirname — identical in Playwright's collection and worker processes.
+  const authFile = path.join(__dirname, '..', '.auth', 'tasks-ui.json');
 
-  test.beforeAll(async ({ authAPI }) => {
+  test.beforeAll(async ({ browser, authAPI }) => {
+    test.setTimeout(300000); // Allow 5 min for registration retries under rate-limiting
     testUser = TestData.createUniqueUser();
+    fs.mkdirSync(path.dirname(authFile), { recursive: true });
     console.log(`\n[SETUP] Creating test user: ${testUser.email}`);
 
     await authAPI.register(testUser.username, testUser.email, testUser.password);
+
+    // Single UI login — save auth state for all tests in this describe
+    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL ?? TestConstants.BASE_URL });
+    const pg = await ctx.newPage();
+    await pg.goto('/login');
+    await pg.getByLabel(AuthSelectors.LOGIN_EMAIL_LABEL).fill(testUser.email);
+    await pg.getByLabel(AuthSelectors.LOGIN_PASSWORD_LABEL, { exact: true }).fill(testUser.password);
+    await pg.getByRole('button', { name: AuthSelectors.LOGIN_BUTTON_LABEL }).click();
+    await pg.waitForURL('/');
+    await ctx.storageState({ path: authFile });
+    await ctx.close();
+    console.log(`[SETUP] Auth state saved`);
   });
 
-  test.beforeEach(async ({ loginPage }) => {
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-  });
+  test.use({ storageState: authFile });
 
   test('TC015: Should display correct task count', async ({ taskPage }) => {
     console.log(`\n[TC015] Starting task count verification test`);
@@ -55,17 +70,27 @@ test.describe('Task Management - UI Read Tests', () => {
 });
 
 test.describe('Task Management - API Only Tests', () => {
+  test.describe.configure({ timeout: 180000 });
+
   let testUser: { username: string; email: string; password: string };
   let authToken: string;
+  let inboxProjectId: number;
 
   // API-only tests need no browser session, just register and login via API once.
-  test.beforeAll(async ({ authAPI }) => {
+  test.beforeAll(async ({ authAPI, taskAPI }) => {
+    test.setTimeout(300000); // 5 min — allow full exponential backoff if app rate-limits
     testUser = TestData.createUniqueUser();
     console.log(`\n[SETUP] Creating test user via API: ${testUser.email}`);
 
     await authAPI.register(testUser.username, testUser.email, testUser.password);
     authToken = await authAPI.login(testUser.email, testUser.password);
     console.log(`[SETUP] Auth token obtained: ${authToken.substring(0, 20)}...`);
+
+    // Resolve the user's inbox project ID dynamically — not always 1 in a shared instance
+    const projects = await taskAPI.getProjects(authToken);
+    const inbox = projects.find(p => String(p.title).toLowerCase() === 'inbox') ?? projects[0];
+    inboxProjectId = inbox.id;
+    console.log(`[SETUP] Inbox project ID: ${inboxProjectId}`);
   });
 
   test('TC016: Should create task via API', async ({ taskAPI }) => {
@@ -76,7 +101,7 @@ test.describe('Task Management - API Only Tests', () => {
     try {
       const createdTask = await taskAPI.createTask(authToken, {
         title: taskData.title,
-        project_id: TestConstants.DEFAULT_PROJECT_ID
+        project_id: inboxProjectId
       });
 
       console.log(`[TC016] API Response: ${JSON.stringify(createdTask)}`);
@@ -98,7 +123,7 @@ test.describe('Task Management - API Only Tests', () => {
     try {
       const createdTask = await taskAPI.createTask(authToken, {
         title: taskData.title,
-        project_id: TestConstants.DEFAULT_PROJECT_ID
+        project_id: inboxProjectId
       });
       console.log(`[TC017] Task created with ID: ${createdTask.id}`);
 
@@ -125,7 +150,7 @@ test.describe('Task Management - API Only Tests', () => {
     try {
       const createdTask = await taskAPI.createTask(authToken, {
         title: originalTask.title,
-        project_id: TestConstants.DEFAULT_PROJECT_ID
+        project_id: inboxProjectId
       });
       console.log(`[TC018] Task created with ID: ${createdTask.id}`);
 
@@ -151,7 +176,7 @@ test.describe('Task Management - API Only Tests', () => {
     try {
       const createdTask = await taskAPI.createTask(authToken, {
         title: taskData.title,
-        project_id: TestConstants.DEFAULT_PROJECT_ID
+        project_id: inboxProjectId
       });
       console.log(`[TC019] Task created with ID: ${createdTask.id}`);
 
@@ -175,7 +200,7 @@ test.describe('Task Management - API Only Tests', () => {
     try {
       const createdTask = await taskAPI.createTask(authToken, {
         title: taskData.title,
-        project_id: TestConstants.DEFAULT_PROJECT_ID
+        project_id: inboxProjectId
       });
       console.log(`[TC020] Task created with ID: ${createdTask.id}`);
 

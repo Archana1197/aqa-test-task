@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import { test, expect } from '../fixtures/test.fixture';
 import { TestData } from '../utils/testData';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -84,22 +86,36 @@ test.describe('PRIORITY - Authentication Tests (README Requirements)', () => {
 
 test.describe('PRIORITY - Task CRUD Tests (README Requirements)', () => {
   let testUser: { username: string; email: string; password: string };
-  let authToken: string;
+  // Static path determined at definition time — beforeAll writes here before any test runs.
+  // Deterministic path via __dirname — identical in Playwright's collection and worker processes.
+  const authFile = path.join(__dirname, '..', '.auth', 'priority-crud.json');
 
-  test.beforeAll(async ({ authAPI }) => {
+  test.beforeAll(async ({ browser, authAPI }) => {
+    test.setTimeout(300000); // Allow up to 5 min for registration retries under rate-limiting
     testUser = TestData.createUniqueUser();
+    fs.mkdirSync(path.dirname(authFile), { recursive: true });
     console.log(`\n[SETUP] Creating unique test user via API: ${testUser.email}`);
 
-    // Register + obtain token — single API call, not repeated per test
+    // Register via API — avoids a browser registration round-trip
     await authAPI.register(testUser.username, testUser.email, testUser.password);
-    authToken = await authAPI.login(testUser.email, testUser.password);
-    console.log(`[SETUP] User registered and API token obtained`);
+    console.log(`[SETUP] User registered via API`);
+
+    // Single UI login — save browser auth state once for all tests in this describe
+    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL ?? TestConstants.BASE_URL });
+    const pg = await ctx.newPage();
+    await pg.goto('/login');
+    await pg.getByLabel(AuthSelectors.LOGIN_EMAIL_LABEL).fill(testUser.email);
+    await pg.getByLabel(AuthSelectors.LOGIN_PASSWORD_LABEL, { exact: true }).fill(testUser.password);
+    await pg.getByRole('button', { name: AuthSelectors.LOGIN_BUTTON_LABEL }).click();
+    await pg.waitForURL('/');
+    await ctx.storageState({ path: authFile });
+    await ctx.close();
+    console.log(`[SETUP] Auth state saved — tests will start pre-authenticated`);
   });
 
-  test.beforeEach(async ({ loginPage }) => {
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-  });
+  // Each test's browser context is pre-loaded with the saved auth state.
+  // No beforeEach login needed; eliminates N browser logins and 429 rate-limit exposure.
+  test.use({ storageState: authFile });
 
   test('TC003: CREATE Task - Should create a task via UI', async ({ taskPage }) => {
     // Isolated test with unique data (addresses criticism #2)

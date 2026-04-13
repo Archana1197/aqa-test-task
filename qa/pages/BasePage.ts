@@ -52,21 +52,6 @@ export abstract class BasePage {
   }
 
   /**
-   * Wait for navigation away from a specific URL pattern
-   * @param urlPattern - URL pattern to avoid
-   * @param timeout - Maximum wait time in milliseconds
-   */
-  protected async waitForUrlChange(
-    urlPattern: string | RegExp,
-    timeout: number = this.config.DEFAULT_TIMEOUT
-  ): Promise<void> {
-    await this.page.waitForURL(
-      (url) => !url.pathname.match(urlPattern),
-      { timeout }
-    );
-  }
-
-  /**
    * Get element by role with enhanced error handling
    * @param role - ARIA role
    * @param options - Additional locator options
@@ -131,21 +116,21 @@ export abstract class BasePage {
   }
 
   /**
-   * Fill input field with enhanced error handling
+   * Fill input field.
+   * Playwright's fill() already waits for the element to be visible and editable.
    * @param locator - Input element locator
    * @param value - Value to fill
    */
   protected async fill(locator: Locator, value: string): Promise<void> {
-    await this.waitForVisible(locator);
     await locator.fill(value);
   }
 
   /**
-   * Click element with enhanced error handling
+   * Click element.
+   * Playwright's click() already waits for the element to be visible, stable, and enabled.
    * @param locator - Element locator
    */
   protected async click(locator: Locator): Promise<void> {
-    await this.waitForVisible(locator);
     await locator.click();
   }
 
