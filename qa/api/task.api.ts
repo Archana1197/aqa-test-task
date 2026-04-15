@@ -1,6 +1,7 @@
 import { APIRequestContext } from '@playwright/test';
 import { Task, Project, CreateTaskRequest, UpdateTaskRequest, HttpStatusCode } from '../models/api.models';
 import { retryWithBackoff } from '../utils/retry';
+import { RuntimeConfig } from '../config/runtime';
 
 /**
  * Task API Helper
@@ -10,7 +11,7 @@ export class TaskAPI {
   readonly context: APIRequestContext;
   readonly baseURL: string;
 
-  constructor(context: APIRequestContext, baseURL: string = 'http://localhost:8080') {
+  constructor(context: APIRequestContext, baseURL: string = RuntimeConfig.environment.baseUrl) {
     this.context = context;
     this.baseURL = baseURL;
   }
@@ -24,10 +25,18 @@ export class TaskAPI {
   async createTask(token: string, taskData: CreateTaskRequest): Promise<Task> {
     const projectId = taskData.project_id ?? 1;
     return await retryWithBackoff(async () => {
-      const response = await this.context.post(`${this.baseURL}/api/v1/projects/${projectId}/tasks`, {
+      const endpoint = `${this.baseURL}/api/v1/projects/${projectId}/tasks`;
+      let response = await this.context.post(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
         data: taskData,
       });
+
+      if (response.status() === 405) {
+        response = await this.context.put(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+          data: taskData,
+        });
+      }
 
       if (!response.ok()) {
         throw new Error(`Create task failed: ${response.status()} ${response.statusText()}`);

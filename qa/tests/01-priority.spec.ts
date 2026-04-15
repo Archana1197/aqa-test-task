@@ -1,9 +1,6 @@
-import path from 'path';
-import fs from 'fs';
 import { test, expect } from '../fixtures/test.fixture';
 import { TestData } from '../utils/testData';
 import { getErrorMessage } from '../utils/errorHandler';
-import { TestConstants, AuthSelectors } from '../config/page.config';
 
 /**
  * PRIORITY TEST SUITE
@@ -85,39 +82,7 @@ test.describe('PRIORITY - Authentication Tests (README Requirements)', () => {
 });
 
 test.describe('PRIORITY - Task CRUD Tests (README Requirements)', () => {
-  let testUser: { username: string; email: string; password: string };
-  // Static path determined at definition time — beforeAll writes here before any test runs.
-  // Deterministic path via __dirname — identical in Playwright's collection and worker processes.
-  const authFile = path.join(__dirname, '..', '.auth', 'priority-crud.json');
-
-  test.beforeAll(async ({ browser, authAPI }) => {
-    test.setTimeout(300000); // Allow up to 5 min for registration retries under rate-limiting
-    testUser = TestData.createUniqueUser();
-    fs.mkdirSync(path.dirname(authFile), { recursive: true });
-    console.log(`\n[SETUP] Creating unique test user via API: ${testUser.email}`);
-
-    // Register via API — avoids a browser registration round-trip
-    await authAPI.register(testUser.username, testUser.email, testUser.password);
-    console.log(`[SETUP] User registered via API`);
-
-    // Single UI login — save browser auth state once for all tests in this describe
-    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL ?? TestConstants.BASE_URL });
-    const pg = await ctx.newPage();
-    await pg.goto('/login');
-    await pg.getByLabel(AuthSelectors.LOGIN_EMAIL_LABEL).fill(testUser.email);
-    await pg.getByLabel(AuthSelectors.LOGIN_PASSWORD_LABEL, { exact: true }).fill(testUser.password);
-    await pg.getByRole('button', { name: AuthSelectors.LOGIN_BUTTON_LABEL }).click();
-    await pg.waitForURL('/');
-    await ctx.storageState({ path: authFile });
-    await ctx.close();
-    console.log(`[SETUP] Auth state saved — tests will start pre-authenticated`);
-  });
-
-  // Each test's browser context is pre-loaded with the saved auth state.
-  // No beforeEach login needed; eliminates N browser logins and 429 rate-limit exposure.
-  test.use({ storageState: authFile });
-
-  test('TC003: CREATE Task - Should create a task via UI', async ({ taskPage }) => {
+  test('TC003: CREATE Task - Should create a task via UI', async ({ taskPage, authenticatedPage }) => {
     // Isolated test with unique data (addresses criticism #2)
     const taskData = TestData.createTask('Priority Create Task');
     console.log(`\n[TC003] Starting CREATE task test`);
@@ -151,7 +116,7 @@ test.describe('PRIORITY - Task CRUD Tests (README Requirements)', () => {
     }
   });
 
-  test('TC004: READ Task - Should read and verify task details via UI', async ({ taskPage }) => {
+  test('TC004: READ Task - Should read and verify task details via UI', async ({ taskPage, authenticatedPage }) => {
     // Single responsibility: Read operation only (addresses criticism #2)
     const taskData = TestData.createTask('Priority Read Task');
     console.log(`\n[TC004] Starting READ task test`);
@@ -180,7 +145,7 @@ test.describe('PRIORITY - Task CRUD Tests (README Requirements)', () => {
     }
   });
 
-  test('TC005: UPDATE Task - Should update task title via UI', async ({ taskPage }) => {
+  test('TC005: UPDATE Task - Should update task title via UI', async ({ taskPage, authenticatedPage }) => {
     // Single responsibility: Update operation only (addresses criticism #2)
     const originalTask = TestData.createTask('Priority Original Task');
     const updatedTask = TestData.createUpdatedTask('Priority Updated Task');
@@ -213,7 +178,7 @@ test.describe('PRIORITY - Task CRUD Tests (README Requirements)', () => {
     }
   });
 
-  test('TC006: DELETE Task - Should delete a task via UI', async ({ taskPage }) => {
+  test('TC006: DELETE Task - Should delete a task via UI', async ({ taskPage, authenticatedPage }) => {
     // Single responsibility: Delete operation only (addresses criticism #2)
     const taskData = TestData.createTask('Priority Delete Task');
     console.log(`\n[TC006] Starting DELETE task test`);
@@ -226,18 +191,13 @@ test.describe('PRIORITY - Task CRUD Tests (README Requirements)', () => {
       await taskPage.addTask(taskData.title);
       console.log(`[TC006] Task created`);
 
-      const countBeforeDelete = await taskPage.getTaskCount();
-      console.log(`[TC006] Count before delete: ${countBeforeDelete}`);
-
       // Delete task
       await taskPage.deleteTask(taskData.title);
       console.log(`[TC006] Delete operation submitted`);
 
-      // Verify deletion
-      const finalCount = await taskPage.getTaskCount();
-      console.log(`[TC006] Count after delete: ${finalCount}`);
-
-      expect(finalCount).toBe(countBeforeDelete - 1);
+      // Verify deletion by checking the specific task is no longer present.
+      const deletedTask = await taskPage.getTaskByTitle(taskData.title);
+      await expect(deletedTask).toHaveCount(0);
       console.log(`[TC006] ✓ PASSED - Task deleted successfully`);
       console.log(`[TC006] ✓ README Requirement: Task CRUD - DELETE - SATISFIED`);
     } catch (error) {

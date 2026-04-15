@@ -5,6 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
+    "test:parallel": "playwright test --workers=3",
+    "test:local": "set TEST_ENV=local&& playwright test",
+    "test:staging": "set TEST_ENV=staging&& playwright test",
+    "test:production": "set TEST_ENV=production&& playwright test",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:ui": "playwright test --ui",
@@ -16,6 +20,9 @@
   "devDependencies": {
     "@playwright/test": "^1.40.0",
     "@types/node": "^20.10.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^2.4.3",
+    "mysql2": "^3.15.2",
     "typescript": "^5.3.0"
   }
 }

@@ -144,19 +144,13 @@ test.describe('Authentication - API Tests', () => {
     console.log(`[TC012] ✓ PASSED - API correctly rejected invalid credentials`);
   });
 
-  test('TC013: Should get user info with valid token', async ({ authAPI }) => {
-    const testUser = TestData.createUniqueUser();
+  test('TC013: Should get user info with valid token', async ({ authAPI, testUser, authToken }) => {
     console.log(`\n[TC013] Starting API user info retrieval test`);
     console.log(`[TC013] Test Data: email="${testUser.email}"`);
 
     try {
-      // Register and login via API
-      await authAPI.register(testUser.username, testUser.email, testUser.password);
-      const token = await authAPI.login(testUser.email, testUser.password);
-      console.log(`[TC013] User registered and logged in via API`);
-
       // Get user info
-      const userInfo = await authAPI.getUserInfo(token);
+      const userInfo = await authAPI.getUserInfo(authToken);
       console.log(`[TC013] User info retrieved: ${JSON.stringify(userInfo)}`);
 
       expect(userInfo).toBeDefined();

@@ -10,7 +10,7 @@ import { AuthSelectors } from '../config/page.config';
  * @extends BasePage
  */
 export class LoginPage extends BasePage {
-  private static readonly MAX_LOGIN_ATTEMPTS = 3;
+  private static readonly MAX_LOGIN_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS ?? '6');
 
   // Lazy-loaded locators for better performance
   private get emailInput(): Locator {
@@ -75,7 +75,7 @@ export class LoginPage extends BasePage {
           throw new Error('Login failed due to repeated 429 Too Many Requests responses.');
         }
 
-        const backoffMs = 10000 * attempt;
+        const backoffMs = Math.min(15000, 3000 * attempt);
         await this.page.waitForTimeout(backoffMs);
         await this.navigate();
         continue;

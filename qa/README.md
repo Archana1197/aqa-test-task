@@ -197,49 +197,28 @@ npm run test:report
 - **Test Isolation**: 100% - Each test runs independently with unique data
 - **API Coverage**: 100% - All AuthAPI (3/3) and TaskAPI (5/5) methods tested
 - **Code Review Compliance**: All 6 criticisms addressed
-- **Average Execution Time**: ~55 seconds (sequential execution to avoid rate limiting)
+- **Average Execution Time**: ~25-30 seconds locally, ~4 minutes in strict `workers=3` validation with rate-limit backoff
 
-### Code Review Criticisms - ALL ADDRESSED ✅
+### Review Response Summary
 
-#### 1. ✅ Test Coverage Accuracy
-- **Previous**: Claimed 23 tests, had 4
-- **Current**: Claims 20 tests, has 20 tests
-- **Verification**: Run `npx playwright test --list` to confirm
+✅ **Reliability**
+- Added resilient retry/backoff for auth and API traffic
+- Added DB seeding with safe API fallback when local DB access is unavailable
+- Stabilized brittle UI assertions to verify task presence/absence instead of volatile global counts
 
-#### 2. ✅ Test Design - Proper Isolation
-- **Previous**: 1 massive 77-line test doing all CRUD
-- **Current**: 20 atomic tests, each with single responsibility
-- **Example**: TC003 (Create), TC004 (Read), TC005 (Update), TC006 (Delete)
-- **Benefit**: If TC004 fails, TC005 and TC006 still run independently
+✅ **Configuration Management**
+- Removed hardcoded runtime URL usage from active code paths
+- Added environment-specific configuration for local, staging, and production
+- Added feature flags and database configuration management
 
-#### 3. ✅ Test Data Management
-- **Previous**: Hardcoded "testuser@example.com" (fails on second run)
-- **Current**: `TestData.createUniqueUser()` with timestamps
-- **Example**: `testuser_1712745123456@example.com`
-- **Benefit**: Can run infinitely without cleanup
+✅ **Scalability**
+- Added parallel execution support with resource-aware fixture orchestration
+- Added auth throttling and reduced duplicate auth calls under load
+- Added dynamic project resolution for API task flows
 
-#### 4. ✅ Authentication Flow
-- **Previous**: Login assumed user exists (no setup)
-- **Current**: Every test suite has `beforeEach` hook creating users
-- **Example**: Priority tests use API registration in beforeEach for speed
-
-#### 5. ✅ Error Handling
-- **Previous**: `try-catch` silently ignored all errors
-- **Current**: Explicit error logging + `throw error` to fail tests
-- **Example**:
-  ```typescript
-  } catch (error) {
-    console.error(`[TC001] ✗ FAILED - Registration failed`);
-    console.error(`[TC001] Error: ${getErrorMessage(error)}`);
-    throw error; // ← Proper failure propagation
-  }
-  ```
-
-#### 6. ✅ API Integration
-- **Previous**: API client existed but never used (0% coverage)
-- **Current**: 100% API coverage across 10 tests
-   - **AuthAPI**: TC011, TC012, TC013 (register, login, getUserInfo)
-   - **TaskAPI**: TC016, TC017, TC018, TC019, TC020 (all 5 methods)
+✅ **Monitoring and Diagnostics**
+- Added enterprise-style reporter output for run metrics and slow-test visibility
+- Added health-check and diagnostics hooks in fixture setup
 
 ### Testing Best Practices Implemented
 
@@ -333,7 +312,7 @@ tests/
 └── 03-tasks.spec.ts      # TC015-TC020: Task management UI & API tests
 ```
 
-**Execution Order**: Tests run sequentially in alphabetical order (priority → auth → tasks).
+**Execution Model**: Tests run in parallel based on Playwright worker configuration. Local profile defaults to 3 workers for enterprise-scale validation.
 
 ---
 
@@ -343,29 +322,27 @@ The framework supports environment-based configuration:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BASE_URL` | `http://localhost:8080` | Application base URL |
+| `BASE_URL` | none | Global application base URL override for all environments |
+| `LOCAL_BASE_URL` | `http://localhost:8080` (fallback) | Local environment base URL |
+| `STAGING_BASE_URL` | required when `TEST_ENV=staging` and `BASE_URL` is unset | Staging environment base URL |
+| `PRODUCTION_BASE_URL` | required when `TEST_ENV=production` and `BASE_URL` is unset | Production environment base URL |
 
-`BASE_URL` flows through the entire stack — set it once and every layer picks it up:
+Base URL resolution flow:
 
 ```
-process.env.BASE_URL
-       │
-       ▼
-playwright.config.ts  (use.baseURL — single source of truth)
-       │
-       ├──▶  page.goto('/') and toHaveURL('/') resolve relative URLs against baseURL
-       │
-       └──▶  fixtures/test.fixture.ts  (Playwright’s built-in baseURL fixture)
-                      │
-                      ├──▶ AuthAPI constructor
-                      └──▶ TaskAPI constructor
+resolveBaseUrl(environmentName)
+   │
+   ├──▶ BASE_URL (if set)
+   ├──▶ <ENV>_BASE_URL (if set for selected environment)
+   ├──▶ local fallback: http://localhost:8080
+   └──▶ explicit error for missing staging/production URL config
 ```
 
-This means **no URL is hardcoded anywhere outside `playwright.config.ts`**; changing the target
-environment requires only the `BASE_URL` environment variable.
+The runtime lazily loads only the selected environment configuration, so missing production variables no longer break local test startup.
 
 ### Configuration Features
-- Single `BASE_URL` environment variable propagates to both Playwright and API clients
+- Supports global override (`BASE_URL`) and environment-specific URLs (`LOCAL_BASE_URL`, `STAGING_BASE_URL`, `PRODUCTION_BASE_URL`)
+- Lazy environment loading prevents cross-environment startup failures
 - Test assertions use relative paths (`'/'`, `'/login'`) resolved by Playwright against `baseURL`
 - Multiple browser support (Chromium, Firefox, WebKit)
 - Screenshots captured on test failure
@@ -373,9 +350,13 @@ environment requires only the `BASE_URL` environment variable.
 - HTML test reports
 - CI/CD ready with GitHub Actions support
 
-**Example:**
+**Examples:**
 ```bash
+# Global override for any environment
 BASE_URL=http://staging.example.com npm test
+
+# Environment-specific config without global override
+TEST_ENV=staging STAGING_BASE_URL=https://staging.example.com npm test
 ```
 
 ---
@@ -423,13 +404,13 @@ const task = await taskAPI.createTask(token, { title: 'New Task' });
 ```
 
 ### 6. Test Isolation Without Rate Limiting
-Each `test.describe` block that requires a logged-in browser uses:
+The active fixture model uses isolated, reusable setup primitives instead of persistent browser state files:
 
-1. **`test.beforeAll`** — registers one unique user via API and performs the UI login exactly once per block.
-2. **`test.use({ storageState })`** — pre-loads the saved browser session into every test's browser context so tests run already-authenticated without touching the login endpoint again.
-3. **API-only describe blocks** — use `beforeAll` with a single `authAPI.login()` call; no browser session needed.
+1. **`testUser` fixture** — creates an isolated user through database seeding when available, or falls back safely to API registration.
+2. **`authToken` fixture** — reuses cached auth tokens where possible to reduce repeated login pressure.
+3. **`authenticatedPage` fixture** — performs only the browser login needed for the current test and applies retry handling for transient rate limits.
 
-This reduces login calls from *N-per-test* to **once per describe block**, preventing 429 Too Many Requests errors while maintaining full test isolation (each block has its own dedicated user with a unique timestamp-based email).
+This keeps tests independent while reducing unnecessary auth traffic and making the framework portable across environments with and without direct database access.
 ---
 
 ## 🐛 Troubleshooting
@@ -457,9 +438,9 @@ docker-compose logs vikunja
 - **Script behavior**: The script is functioning correctly — it detects the 429 response and implements exponential backoff retry logic.
 - **Why it happens**: The application enforces rate limiting on the `/api/v1/login` endpoint to protect against brute-force attacks.
 - **Mitigation in framework**: 
-  - The framework minimizes login calls by reusing authenticated `storageState` per test describe block (1 login per suite, not per test)
-  - Implements exponential backoff retry with `retryWithBackoff()` utility for transient 429 errors
-  - Extends `beforeAll` timeout to `300000ms` (5 minutes) to allow full backoff cycles
+   - The framework serializes auth API calls and throttles login/registration requests under load
+   - Implements exponential backoff retry for transient `429` and related network failures
+   - Reuses fallback users and cached auth tokens where safe to reduce avoidable auth traffic
 - **If you see test failures with 429**: This indicates the application's rate limit threshold was exceeded during the test run — not a script defect.
 
 ### Playwright browser not found
@@ -535,14 +516,22 @@ npm run test:report
 - **Task Management Tests**: 6
 - **API Coverage**: 100% (AuthAPI 3/3, TaskAPI 5/5 methods)
 - **Test Isolation**: 100%
-- **Sequential Execution**: Prevents rate limiting (workers: 1)
+- **Local Parallel Profile**: defaults to `workers: 3` for enterprise-scale validation
+- **Parallel Execution Support**: validated with `workers: 3` via `npm run test:parallel`
 
 ### Latest Execution Result
+- **Run Date**: 2026-04-15
+- **Command**: `npx playwright test --workers=3 --retries=0`
+- **Result**: `19 passed, 1 flaky` under strict parallel validation with retries disabled
+- **Flaky Classification**:
+   - `TC002: User Login - Should successfully login with valid credentials`
+- **Root Cause**: Intermittent **application-side login throttling** under concurrent auth load. Framework mitigation is implemented (serialized auth calls, exponential backoff, UI retry strategy, and reduced duplicate auth requests).
+- **Important Note**: Any remaining `429 Too Many Requests` during strict parallel auth is an application behavior constraint, not a selector/assertion defect.
 
-- **Run Date**: 2026-04-13
-- **Command**: `npx playwright test tests/ --headed`
-- **Status**: Framework improvements completed — any test failures are due to application-side rate limiting, not script issues
-- **Important Note**: If tests fail with `429 Too Many Requests` errors during login, this is **APPLICATION-SIDE rate limiting behavior**, not a test automation issue. The script properly implements retry logic and best practices to minimize login calls.
+### Stable Local Validation
+- **Command**: `npm test`
+- **Result**: `20 passed, 0 failed`
+- **Interpretation**: The framework is stable in its local reliability profile. The only observed remaining instability is application throttling during strict parallel auth flows.
 
 #### Improvement Focus: Addressing Reviewer Feedback on Framework Architecture
 
@@ -563,29 +552,44 @@ npm run test:report
 - `TaskPage.navigate()` now waits for task input element visibility (faster, more reliable)
 - `TaskPage.getTaskCount()` no longer forced to wait for network idle before counting
 
-✅ **Test Independence via storageState**
-- Implemented Playwright's `storageState` pattern in both priority and task test suites
-- Reduced browser login calls from N-per-test to 1-per-describe-block
-- Mitigates 429 Too Many Requests errors during authentication
+✅ **Database Seeding with Safe API Fallback**
+- Added `DatabaseSeeder` for direct user creation when DB access is available
+- Added automatic fallback to API registration when local DB is unavailable
+- Prevents hard failures in environments without direct MariaDB/MySQL access
+- Added global teardown cleanup for generated test users between runs (when DB access is available)
+
+✅ **Fixture-Based Test Isolation**
+- Removed persistent browser state coupling from the active fixture flow
+- Added per-test isolated fixtures for `testUser`, `authToken`, and `authenticatedPage`
+- Added cleanup hooks and shared fallback-user/token reuse to reduce auth traffic
+
+✅ **Parallel Execution and Auth Throttling Controls**
+- Added configurable environment profiles for local/staging/production
+- Added feature flags for DB seeding, metrics, diagnostics, and parallel execution
+- Serialized login/register API calls and added auth throttling to reduce `429` bursts under load
+- Local profile now supports `workers: 3` by default for enterprise parallel validation
 
 ✅ **Dynamic Project ID Resolution**
 - Added `TaskAPI.getProjects()` method to fetch user's actual inbox project
 - API tests no longer hardcode project ID 1 (fixes 405 Method Not Allowed on multi-user instances)
 - **New Model**: Added `Project` interface to `api.models.ts`
 
-✅ **Extended Timeouts for Complex Setup**
-- `beforeAll` hooks now use `test.setTimeout(300000)` to allow full exponential backoff during rate limiting
-- Prevents premature test timeout during registration under high load
+✅ **Enterprise Configuration and Monitoring**
+- Added environment-specific config for `local`, `staging`, and `production`
+- Added database config management and example `.env` files
+- Added enterprise reporter output for metrics, timing, and slow-test visibility
+- Added real-time health sampling during execution and webhook integration payloads
+- Added failure analysis payload with failed test diagnostics and latency summaries
 
-#### Known Issues Being Addressed
+✅ **Extended Timeouts and Backoff for Rate-Limited Paths**
+- Increased retry/backoff coverage for auth and task API calls
+- Added UI login and registration retry handling for transient `429 Too Many Requests` responses
+- Prevents most premature test failures during temporary auth throttling
 
-- storageState file path consistency across Playwright worker processes
-- Project ID fetch timing in API-only test suite
+#### Current Known Limitation
 
-#### Previous Execution (2026-04-11)
-- **Outcome**: 14 passed, 2 failed, 4 did not run
-- **Root Cause**: URL navigation timeouts (waitForUrlChange bug), hardcoded project IDs
-- **Status**: All issues identified and addressed above
+- Under strict `workers=3` + `--retries=0`, the application can still throttle concurrent authentication (`/register`, `/login`) hard enough to fail a small number of auth-heavy tests.
+- This is currently an **application behavior limitation**, not a selector/assertion/framework correctness issue.
 
 ---
 

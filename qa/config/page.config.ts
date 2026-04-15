@@ -23,12 +23,6 @@ export const PageConfig = {
 export const TestConstants = {
   /** Default project ID for inbox/default project */
   DEFAULT_PROJECT_ID: 1,
-
-  /**
-   * Fallback base URL used when the Playwright baseURL fixture is unavailable.
-   * The authoritative value is set by process.env.BASE_URL in playwright.config.ts.
-   */
-  BASE_URL: 'http://localhost:8080',
 } as const;
 
 /**

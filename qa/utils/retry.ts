@@ -9,14 +9,18 @@
 export interface RetryConfig {
   maxRetries: number;
   retryDelay: number;
+  maxDelayMs: number;
+  jitterRatio: number;
 }
 
 /**
  * Default retry configuration
  */
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 4, // Retry 4 times (5 total attempts)
-  retryDelay: 15000, // 15 seconds
+  maxRetries: 7,
+  retryDelay: 2000,
+  maxDelayMs: 45000,
+  jitterRatio: 0.3,
 };
 
 /**
@@ -48,12 +52,19 @@ export async function retryWithBackoff<T>(
     } catch (error) {
       lastError = error as Error;
       const is429 = lastError.message?.includes('429');
+      const isTransient5xx = /\b50[0-9]\b/.test(lastError.message ?? '');
+      const isNetworkError =
+        /ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|fetch failed/i.test(lastError.message ?? '');
+      const isRetryable = is429 || isTransient5xx || isNetworkError;
       const isLastAttempt = attempt === config.maxRetries;
       
-      if (is429 && !isLastAttempt) {
-        const backoffDelay = config.retryDelay * Math.pow(2, attempt);
+      if (isRetryable && !isLastAttempt) {
+        const exponentialDelay = config.retryDelay * Math.pow(2, attempt);
+        const boundedDelay = Math.min(exponentialDelay, config.maxDelayMs);
+        const jitter = boundedDelay * config.jitterRatio * Math.random();
+        const backoffDelay = Math.round(boundedDelay + jitter);
         console.log(
-          `Rate limited (429), waiting ${backoffDelay / 1000} seconds before retry... ` +
+          `Retryable API error, waiting ${backoffDelay / 1000} seconds before retry... ` +
           `(attempt ${attempt + 1}/${config.maxRetries + 1})`
         );
         await wait(backoffDelay);

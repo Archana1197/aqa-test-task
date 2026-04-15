@@ -83,8 +83,8 @@ class TestDataBuilder {
   createUniqueUser(): UserCredentials {
     const timestamp = this.generateTimestamp();
     return {
-      username: `testuser_${timestamp}`,
-      email: `testuser_${timestamp}@example.com`,
+      username: `e2e_user_${timestamp}`,
+      email: `e2e_user_${timestamp}@example.com`,
       password: 'TestPassword123!',
     };
   }

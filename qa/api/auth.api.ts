@@ -1,6 +1,7 @@
 import { APIRequestContext } from '@playwright/test';
 import { AuthResponse, RegistrationResponse, UserInfo } from '../models/api.models';
 import { retryWithBackoff } from '../utils/retry';
+import { RuntimeConfig } from '../config/runtime';
 
 /**
  * Authentication API Helper
@@ -9,10 +10,27 @@ import { retryWithBackoff } from '../utils/retry';
 export class AuthAPI {
   readonly context: APIRequestContext;
   readonly baseURL: string;
+  private static authRequestQueue: Promise<void> = Promise.resolve();
 
-  constructor(context: APIRequestContext, baseURL: string = 'http://localhost:8080') {
+  constructor(context: APIRequestContext, baseURL: string = RuntimeConfig.environment.baseUrl) {
     this.context = context;
     this.baseURL = baseURL;
+  }
+
+  private async enqueueAuthRequest<T>(operation: () => Promise<T>): Promise<T> {
+    const throttled = AuthAPI.authRequestQueue.then(async () => {
+      const result = await operation();
+      const throttleMs = Number(process.env.AUTH_API_THROTTLE_MS ?? '1200');
+      await new Promise(resolve => setTimeout(resolve, throttleMs));
+      return result;
+    });
+
+    AuthAPI.authRequestQueue = throttled.then(
+      () => undefined,
+      () => undefined
+    );
+
+    return throttled;
   }
 
   /**
@@ -22,21 +40,23 @@ export class AuthAPI {
    * @returns Authentication token
    */
   async login(email: string, password: string): Promise<string> {
-    return await retryWithBackoff(async () => {
-      const response = await this.context.post(`${this.baseURL}/api/v1/login`, {
-        data: {
-          long_token: true,
-          password: password,
-          username: email,
-        },
+    return await this.enqueueAuthRequest(async () => {
+      return await retryWithBackoff(async () => {
+        const response = await this.context.post(`${this.baseURL}/api/v1/login`, {
+          data: {
+            long_token: true,
+            password: password,
+            username: email,
+          },
+        });
+
+        if (!response.ok()) {
+          throw new Error(`Login failed: ${response.status()} ${response.statusText()}`);
+        }
+
+        const responseBody = await response.json();
+        return responseBody.token;
       });
-
-      if (!response.ok()) {
-        throw new Error(`Login failed: ${response.status()} ${response.statusText()}`);
-      }
-
-      const responseBody = await response.json();
-      return responseBody.token;
     });
   }
 
@@ -48,20 +68,22 @@ export class AuthAPI {
    * @returns Registration response
    */
   async register(username: string, email: string, password: string): Promise<RegistrationResponse> {
-    return await retryWithBackoff(async () => {
-      const response = await this.context.post(`${this.baseURL}/api/v1/register`, {
-        data: {
-          username: username,
-          email: email,
-          password: password,
-        },
+    return await this.enqueueAuthRequest(async () => {
+      return await retryWithBackoff(async () => {
+        const response = await this.context.post(`${this.baseURL}/api/v1/register`, {
+          data: {
+            username: username,
+            email: email,
+            password: password,
+          },
+        });
+
+        if (!response.ok()) {
+          throw new Error(`Registration failed: ${response.status()} ${response.statusText()}`);
+        }
+
+        return response.json();
       });
-
-      if (!response.ok()) {
-        throw new Error(`Registration failed: ${response.status()} ${response.statusText()}`);
-      }
-
-      return response.json();
     });
   }
 
