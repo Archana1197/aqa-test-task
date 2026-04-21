@@ -1,11 +1,5 @@
-/**
- * API retry utilities
- * Handles retry logic with exponential backoff for API requests
- */
+import { HttpError } from './errors';
 
-/**
- * Retry configuration
- */
 export interface RetryConfig {
   maxRetries: number;
   retryDelay: number;
@@ -13,9 +7,6 @@ export interface RetryConfig {
   jitterRatio: number;
 }
 
-/**
- * Default retry configuration
- */
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxRetries: 7,
   retryDelay: 2000,
@@ -23,39 +14,35 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   jitterRatio: 0.3,
 };
 
-/**
- * Wait for specified milliseconds
- * @param ms - Milliseconds to wait
- */
 async function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/**
- * Retry wrapper for API calls with backoff
- * Retries on 429 (rate limit) errors with configurable delay
- * 
- * @param fn - Async function to retry
- * @param config - Retry configuration (optional)
- * @returns Result from the function
- * @throws Last error if all retries fail
- */
+function isRetryableError(error: unknown): boolean {
+  if (error instanceof HttpError) {
+    return error.status === 429 || (error.status >= 500 && error.status < 600);
+  }
+
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message ?? '';
+  return /ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|fetch failed/i.test(message);
+}
+
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   config: RetryConfig = DEFAULT_RETRY_CONFIG
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: unknown;
   
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
-      lastError = error as Error;
-      const is429 = lastError.message?.includes('429');
-      const isTransient5xx = /\b50[0-9]\b/.test(lastError.message ?? '');
-      const isNetworkError =
-        /ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|fetch failed/i.test(lastError.message ?? '');
-      const isRetryable = is429 || isTransient5xx || isNetworkError;
+      lastError = error;
+      const isRetryable = isRetryableError(error);
       const isLastAttempt = attempt === config.maxRetries;
       
       if (isRetryable && !isLastAttempt) {
@@ -63,10 +50,6 @@ export async function retryWithBackoff<T>(
         const boundedDelay = Math.min(exponentialDelay, config.maxDelayMs);
         const jitter = boundedDelay * config.jitterRatio * Math.random();
         const backoffDelay = Math.round(boundedDelay + jitter);
-        console.log(
-          `Retryable API error, waiting ${backoffDelay / 1000} seconds before retry... ` +
-          `(attempt ${attempt + 1}/${config.maxRetries + 1})`
-        );
         await wait(backoffDelay);
         continue;
       }
@@ -74,5 +57,5 @@ export async function retryWithBackoff<T>(
     }
   }
   
-  throw lastError!;
+  throw lastError;
 }

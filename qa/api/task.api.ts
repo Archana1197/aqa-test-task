@@ -1,145 +1,56 @@
-import { APIRequestContext } from '@playwright/test';
 import { Task, Project, CreateTaskRequest, UpdateTaskRequest, HttpStatusCode } from '../models/api.models';
-import { retryWithBackoff } from '../utils/retry';
-import { RuntimeConfig } from '../config/runtime';
+import { HttpError } from '../utils/errors';
+import { BaseAPI } from './base.api';
 
-/**
- * Task API Helper
- * Handles task-related API operations
- */
-export class TaskAPI {
-  readonly context: APIRequestContext;
-  readonly baseURL: string;
-
-  constructor(context: APIRequestContext, baseURL: string = RuntimeConfig.environment.baseUrl) {
-    this.context = context;
-    this.baseURL = baseURL;
-  }
-
-  /**
-   * Create a new task
-   * @param token - Authentication token
-   * @param taskData - Task creation data
-   * @returns Created task object
-   */
+export class TaskAPI extends BaseAPI {
   async createTask(token: string, taskData: CreateTaskRequest): Promise<Task> {
     const projectId = taskData.project_id ?? 1;
-    return await retryWithBackoff(async () => {
-      const endpoint = `${this.baseURL}/api/v1/projects/${projectId}/tasks`;
-      let response = await this.context.post(endpoint, {
-        headers: { Authorization: `Bearer ${token}` },
+    const path = `/api/v1/projects/${projectId}/tasks`;
+
+    try {
+      return await this.postJson<Task>(path, {
+        token,
         data: taskData,
       });
-
-      if (response.status() === 405) {
-        response = await this.context.put(endpoint, {
-          headers: { Authorization: `Bearer ${token}` },
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 405) {
+        return await this.putJson<Task>(path, {
+          token,
           data: taskData,
         });
       }
-
-      if (!response.ok()) {
-        throw new Error(`Create task failed: ${response.status()} ${response.statusText()}`);
-      }
-
-      return response.json();
-    });
+      throw error;
+    }
   }
 
-  /**
-   * Get task by ID
-   * @param token - Authentication token
-   * @param taskId - Task ID
-   * @returns Task object
-   */
   async getTask(token: string, taskId: number): Promise<Task> {
-    return await retryWithBackoff(async () => {
-      const response = await this.context.get(`${this.baseURL}/api/v1/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok()) {
-        throw new Error(`Get task failed: ${response.status()} ${response.statusText()}`);
-      }
-
-      return response.json();
+    return this.getJson<Task>(`/api/v1/tasks/${taskId}`, {
+      token,
     });
   }
 
-  /**
-   * Update a task
-   * @param token - Authentication token
-   * @param taskId - Task ID
-   * @param taskData - Updated task data
-   * @returns Updated task object
-   */
   async updateTask(token: string, taskId: number, taskData: UpdateTaskRequest): Promise<Task> {
-    return await retryWithBackoff(async () => {
-      const response = await this.context.post(`${this.baseURL}/api/v1/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        data: taskData,
-      });
-
-      if (!response.ok()) {
-        throw new Error(`Update task failed: ${response.status()} ${response.statusText()}`);
-      }
-
-      return response.json();
+    return this.postJson<Task>(`/api/v1/tasks/${taskId}`, {
+      token,
+      data: taskData,
     });
   }
 
-  /**
-   * Delete a task
-   * @param token - Authentication token
-   * @param taskId - Task ID
-   * @returns HTTP status code
-   */
   async deleteTask(token: string, taskId: number): Promise<HttpStatusCode> {
-    return await retryWithBackoff(async () => {
-      const response = await this.context.delete(`${this.baseURL}/api/v1/tasks/${taskId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      return response.status();
+    return this.deleteStatus(`/api/v1/tasks/${taskId}`, {
+      token,
     });
   }
 
-  /**
-   * Get all projects for the authenticated user
-   * @param token - Authentication token
-   * @returns Array of project objects
-   */
   async getProjects(token: string): Promise<Project[]> {
-    return await retryWithBackoff(async () => {
-      const response = await this.context.get(`${this.baseURL}/api/v1/projects`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok()) {
-        throw new Error(`Get projects failed: ${response.status()} ${response.statusText()}`);
-      }
-
-      return response.json();
+    return this.getJson<Project[]>('/api/v1/projects', {
+      token,
     });
   }
 
-  /**
-   * Get all tasks for a project
-   * @param token - Authentication token
-   * @param projectId - Project ID (default: 1 for Inbox)
-   * @returns Array of tasks
-   */
   async getAllTasks(token: string, projectId: number = 1): Promise<Task[]> {
-    return await retryWithBackoff(async () => {
-      const response = await this.context.get(`${this.baseURL}/api/v1/projects/${projectId}/tasks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok()) {
-        throw new Error(`Get all tasks failed: ${response.status()} ${response.statusText()}`);
-      }
-
-      return response.json();
+    return this.getJson<Task[]>(`/api/v1/projects/${projectId}/tasks`, {
+      token,
     });
   }
 }

@@ -1,17 +1,10 @@
 import { FeatureFlags } from './types';
-
-function envFlag(name: string, defaultValue: boolean): boolean {
-  const value = process.env[name];
-  if (value === undefined) {
-    return defaultValue;
-  }
-  return value.toLowerCase() === 'true';
-}
+import { envBoolean } from './env';
 
 export const featureFlags: FeatureFlags = {
-  enableDatabaseSeeding: envFlag('FEATURE_DB_SEEDING', true),
-  enableParallelExecution: envFlag('FEATURE_PARALLEL_EXECUTION', true),
-  enableResourcePooling: envFlag('FEATURE_RESOURCE_POOLING', true),
-  enableDiagnostics: envFlag('FEATURE_DIAGNOSTICS', true),
-  enableMetrics: envFlag('FEATURE_METRICS', true),
+  enableDatabaseSeeding: envBoolean('FEATURE_DB_SEEDING', true),
+  enableParallelExecution: envBoolean('FEATURE_PARALLEL_EXECUTION', true),
+  enableResourcePooling: envBoolean('FEATURE_RESOURCE_POOLING', true),
+  enableDiagnostics: envBoolean('FEATURE_DIAGNOSTICS', true),
+  enableMetrics: envBoolean('FEATURE_METRICS', true),
 };

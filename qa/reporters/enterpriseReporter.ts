@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { FullResult, Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import { RuntimeConfig } from '../config/runtime';
+import { envBoolean, envNumber } from '../config/env';
 
 interface TestMetric {
   id: string;
@@ -26,12 +27,12 @@ class EnterpriseReporter implements Reporter {
   private healthInterval: NodeJS.Timeout | null = null;
 
   onBegin(): void {
-    const shouldSampleHealth = (process.env.FEATURE_HEALTH_SAMPLING ?? 'true').toLowerCase() === 'true';
+    const shouldSampleHealth = envBoolean('FEATURE_HEALTH_SAMPLING', true);
     if (!shouldSampleHealth) {
       return;
     }
 
-    const intervalMs = Number(process.env.HEALTH_SAMPLE_INTERVAL_MS ?? '15000');
+    const intervalMs = envNumber('HEALTH_SAMPLE_INTERVAL_MS', 15000);
     this.healthInterval = setInterval(() => {
       void this.captureHealthSample();
     }, intervalMs);

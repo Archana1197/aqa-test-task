@@ -1,11 +1,12 @@
 import { APIRequestContext } from '@playwright/test';
 import { RuntimeConfig } from '../config/runtime';
+import { envNumber } from '../config/env';
 import { DatabaseSeeder, SeededUser, SeedUserInput } from '../data/databaseSeeder';
 import { ResourcePool } from './resourcePool';
 
 export class TestOrchestrator {
   private readonly userPool = new ResourcePool<SeededUser>(
-    Number(process.env.USER_POOL_SIZE ?? RuntimeConfig.environment.playwright.workers)
+    envNumber('USER_POOL_SIZE', RuntimeConfig.environment.playwright.workers)
   );
   private readonly pooledUsers = new Set<SeededUser>();
 

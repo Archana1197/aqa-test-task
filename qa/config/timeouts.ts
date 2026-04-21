@@ -1,0 +1,6 @@
+export const PageTimeouts = {
+  DEFAULT_TIMEOUT: 15000,
+  SHORT_TIMEOUT: 5000,
+  LONG_TIMEOUT: 30000,
+  NAVIGATION_TIMEOUT: 15000,
+} as const;

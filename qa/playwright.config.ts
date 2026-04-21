@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import { RuntimeConfig } from './config/runtime';
+import { envBoolean } from './config/env';
 
 /**
  * Playwright configuration for Vikunja QA tests
@@ -10,8 +11,10 @@ export default defineConfig({
   fullyParallel: RuntimeConfig.features.enableParallelExecution
     ? RuntimeConfig.environment.playwright.fullyParallel
     : false,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? Math.max(1, RuntimeConfig.environment.playwright.retries) : RuntimeConfig.environment.playwright.retries,
+  forbidOnly: envBoolean('CI', false),
+  retries: envBoolean('CI', false)
+    ? Math.max(1, RuntimeConfig.environment.playwright.retries)
+    : RuntimeConfig.environment.playwright.retries,
   workers: RuntimeConfig.features.enableParallelExecution
     ? RuntimeConfig.environment.playwright.workers
     : 1,
@@ -33,13 +36,5 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
   ],
 });

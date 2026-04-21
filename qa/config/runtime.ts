@@ -1,8 +1,9 @@
 import { featureFlags } from './features';
+import { envString } from './env';
 import { EnvironmentConfig, EnvironmentName } from './types';
 
 function getEnvironmentName(): EnvironmentName {
-  const raw = process.env.TEST_ENV?.toLowerCase();
+  const raw = envString('TEST_ENV', 'local').toLowerCase();
   if (raw === 'staging' || raw === 'production' || raw === 'local') {
     return raw;
   }

@@ -1,7 +1,8 @@
 import { cleanupE2eUsers } from './data/testDataCleaner';
+import { envBoolean } from './config/env';
 
 async function globalTeardown(): Promise<void> {
-  if ((process.env.ENABLE_TEST_DATA_CLEANUP ?? 'true').toLowerCase() !== 'true') {
+  if (!envBoolean('ENABLE_TEST_DATA_CLEANUP', true)) {
     return;
   }
 

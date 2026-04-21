@@ -1,155 +1,21 @@
 {
   "environment": "local",
-  "status": "passed",
-  "durationMs": 170816,
+  "status": "failed",
+  "durationMs": 585,
   "totals": {
-    "tests": 20,
-    "passed": 20,
+    "tests": 0,
+    "passed": 0,
     "failed": 0,
     "timedOut": 0,
-    "slowTests": 8
+    "slowTests": 0
   },
-  "tests": [
-    {
-      "id": "6016335c325048fd2753-28f75bee5f93bd989bce",
-      "title": "TC001: User Registration - Should successfully register with unique credentials",
-      "status": "passed",
-      "durationMs": 11593,
-      "retries": 0
-    },
-    {
-      "id": "6016335c325048fd2753-a00b63dc2e7080031964",
-      "title": "TC002: User Login - Should successfully login with valid credentials",
-      "status": "passed",
-      "durationMs": 7960,
-      "retries": 0
-    },
-    {
-      "id": "6016335c325048fd2753-ab8283d44909f5cb566b",
-      "title": "TC003: CREATE Task - Should create a task via UI",
-      "status": "passed",
-      "durationMs": 8524,
-      "retries": 0
-    },
-    {
-      "id": "6016335c325048fd2753-25c58414bdf9623b379b",
-      "title": "TC004: READ Task - Should read and verify task details via UI",
-      "status": "passed",
-      "durationMs": 53746,
-      "retries": 0
-    },
-    {
-      "id": "6016335c325048fd2753-47929848d02f4fc40042",
-      "title": "TC005: UPDATE Task - Should update task title via UI",
-      "status": "passed",
-      "durationMs": 8067,
-      "retries": 0
-    },
-    {
-      "id": "6016335c325048fd2753-7aafb47729d307a8e35e",
-      "title": "TC006: DELETE Task - Should delete a task via UI",
-      "status": "passed",
-      "durationMs": 8037,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-5b96afee28b566909547",
-      "title": "TC007: Should validate required fields on registration",
-      "status": "passed",
-      "durationMs": 4757,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-0ab7543d162b2e444950",
-      "title": "TC008: Should reject login with invalid credentials",
-      "status": "passed",
-      "durationMs": 4515,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-028094ed8b2c36beb3ac",
-      "title": "TC009: Should reject login with non-existent user",
-      "status": "passed",
-      "durationMs": 4470,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-ed7f26e420385cd7067d",
-      "title": "TC010: Should validate required fields on login",
-      "status": "passed",
-      "durationMs": 4214,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-782285754b012ee25831",
-      "title": "TC011: Should register and authenticate via API",
-      "status": "passed",
-      "durationMs": 36872,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-1aeabcc262840d4275ca",
-      "title": "TC012: Should reject invalid API login",
-      "status": "passed",
-      "durationMs": 945,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-955042c379db05f59070",
-      "title": "TC013: Should get user info with valid token",
-      "status": "passed",
-      "durationMs": 1451,
-      "retries": 0
-    },
-    {
-      "id": "42ee48a5561f1ffbe298-3308887a7dce3baf709b",
-      "title": "TC014: Should reject registration with duplicate email",
-      "status": "passed",
-      "durationMs": 1379,
-      "retries": 0
-    },
-    {
-      "id": "466493c6dd44679c8150-a57562cce160f38acb2a",
-      "title": "TC015: Should display correct task count",
-      "status": "passed",
-      "durationMs": 6903,
-      "retries": 0
-    },
-    {
-      "id": "466493c6dd44679c8150-78508387acaf0f566a0d",
-      "title": "TC016: Should create task via API",
-      "status": "passed",
-      "durationMs": 139,
-      "retries": 0
-    },
-    {
-      "id": "466493c6dd44679c8150-1934830c3b9985350cb9",
-      "title": "TC017: Should read task via API",
-      "status": "passed",
-      "durationMs": 131,
-      "retries": 0
-    },
-    {
-      "id": "466493c6dd44679c8150-4cf4fbf5e903e649d415",
-      "title": "TC018: Should update task via API",
-      "status": "passed",
-      "durationMs": 140,
-      "retries": 0
-    },
-    {
-      "id": "466493c6dd44679c8150-db6946eb543c445409a5",
-      "title": "TC019: Should delete task via API",
-      "status": "passed",
-      "durationMs": 145,
-      "retries": 0
-    },
-    {
-      "id": "466493c6dd44679c8150-ed785e6b1ea9932f8c14",
-      "title": "TC020: Should mark task as complete via API",
-      "status": "passed",
-      "durationMs": 159,
-      "retries": 0
-    }
-  ],
-  "generatedAt": "2026-04-15T05:39:36.874Z"
+  "health": {
+    "samplesCollected": 0,
+    "unhealthySamples": 0,
+    "averageResponseMs": 0
+  },
+  "failedTests": [],
+  "tests": [],
+  "healthSamples": [],
+  "generatedAt": "2026-04-21T04:08:16.003Z"
 }

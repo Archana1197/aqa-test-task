@@ -37,35 +37,18 @@ async function getOrCreateFallbackUser(authAPI: AuthAPI): Promise<UserCredential
   }
 }
 
-/**
- * Custom test fixtures
- * Extends Playwright's base test with custom page objects and API helpers
- */
 export type TestFixtures = {
-  /** Login page object */
   loginPage: LoginPage;
-  /** Registration page object */
   registerPage: RegisterPage;
-  /** Task management page object */
   taskPage: TaskPage;
-  /** Task API helper */
   taskAPI: TaskAPI;
-  /** Authentication API helper */
   authAPI: AuthAPI;
-  /** Enterprise test orchestrator */
   orchestrator: TestOrchestrator;
-  /** Per-test isolated user */
   testUser: UserCredentials;
-  /** Per-test auth token */
   authToken: string;
-  /** Page that is already logged in for the current isolated user */
   authenticatedPage: Page;
 };
 
-/**
- * Extended test with custom fixtures
- * Provides automatic setup and teardown for page objects and API helpers
- */
 export const test = base.extend<TestFixtures>({
   loginPage: async ({ page }, use) => {
     const loginPage = new LoginPage(page);

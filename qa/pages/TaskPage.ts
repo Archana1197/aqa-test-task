@@ -1,15 +1,8 @@
 import { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { TaskSelectors } from '../config/page.config';
+import { TaskSelectors } from '../config/selectors/task.selectors';
 import { WaitStrategy } from '../utils/WaitStrategy';
 
-/**
- * Task Page Object
- * Handles all task-related operations following Single Responsibility Principle
- * 
- * @class TaskPage
- * @extends BasePage
- */
 export class TaskPage extends BasePage {
   // Locators - initialized lazily for better performance
   private get taskInput(): Locator {
@@ -32,21 +25,11 @@ export class TaskPage extends BasePage {
     return this.locator(TaskSelectors.TASK_LINK);
   }
 
-  /**
-   * Navigate to overview page (task list)
-   * @returns Promise<void>
-   */
   async navigate(): Promise<void> {
     await this.navigateToUrl(TaskSelectors.OVERVIEW_ROUTE, 'domcontentloaded');
     await this.waitForVisible(this.taskInput);
   }
 
-  /**
-   * Add a new task
-   * @param taskTitle - Title of the task to create
-   * @returns Promise<void>
-   * @throws Error if task creation fails
-   */
   async addTask(taskTitle: string): Promise<void> {
     const initialCount = await this.getTaskCount();
     
@@ -62,80 +45,38 @@ export class TaskPage extends BasePage {
     );
   }
 
-  /**
-   * Get the total count of tasks
-   * @returns Promise<number> - Number of tasks
-   */
   async getTaskCount(): Promise<number> {
-    try {
-      return await this.taskLinks.count();
-    } catch {
-      return 0;
-    }
+    return this.taskLinks.count();
   }
 
-  /**
-   * Get task element by title
-   * @param title - Task title to search for
-   * @returns Locator - First matching task element
-   */
   async getTaskByTitle(title: string): Promise<Locator> {
     return this.getByRole('link', { name: title }).first();
   }
 
-  /**
-   * Update an existing task
-   * @param oldTitle - Current task title
-   * @param newTitle - New task title
-   * @returns Promise<void>
-   * @throws Error if task update fails
-   */
   async updateTask(oldTitle: string, newTitle: string): Promise<void> {
     await this.openTaskDetails(oldTitle);
     await this.editTaskTitle(oldTitle, newTitle);
     await this.navigate();
   }
 
-  /**
-   * Delete a task
-   * @param taskTitle - Title of task to delete
-   * @returns Promise<void>
-   * @throws Error if task deletion fails
-   */
   async deleteTask(taskTitle: string): Promise<void> {
     await this.openTaskDetails(taskTitle);
     await this.performDelete();
     await this.navigate();
   }
 
-  /**
-   * Mark a task as complete
-   * @param taskTitle - Title of task to mark complete
-   * @returns Promise<void>
-   */
-  async markTaskComplete(taskTitle: string): Promise<void> {
+  async markTaskComplete(): Promise<void> {
     const checkbox = this.getByRole('img', { name: TaskSelectors.CHECKBOX_LABEL });
     await this.click(checkbox);
     await this.waitForPageLoad('domcontentloaded');
   }
 
-  /**
-   * Open task details page
-   * @private
-   * @param taskTitle - Task title to open
-   */
   private async openTaskDetails(taskTitle: string): Promise<void> {
     const taskLink = await this.getTaskByTitle(taskTitle);
     await this.click(taskLink);
     await this.waitForPageLoad('networkidle');
   }
 
-  /**
-   * Edit task title in detail view
-   * @private
-   * @param oldTitle - Current title
-   * @param newTitle - New title
-   */
   private async editTaskTitle(oldTitle: string, newTitle: string): Promise<void> {
     const headingLocator = this.getByRole('heading', { name: oldTitle });
     
@@ -145,10 +86,6 @@ export class TaskPage extends BasePage {
     await this.waitForPageLoad('networkidle');
   }
 
-  /**
-   * Perform delete operation
-   * @private
-   */
   private async performDelete(): Promise<void> {
     await this.click(this.deleteButton);
     await this.click(this.confirmDeleteButton);

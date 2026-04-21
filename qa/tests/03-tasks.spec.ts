@@ -1,43 +1,22 @@
 import { test, expect } from '../fixtures/test.fixture';
 import { TestData } from '../utils/testData';
-import { getErrorMessage } from '../utils/errorHandler';
-
-/**
- * Additional Task Management Tests
- *
- * NOTE: Priority CRUD tests (TC001-TC006) are in priority.spec.ts
- * This file contains supplementary task management tests covering UI, API, and combined flows.
- * Test IDs: TC015-TC020
- */
 
 test.describe('Task Management - UI Read Tests', () => {
   test('TC015: Should display correct task count', async ({ taskPage, authenticatedPage }) => {
-    console.log(`\n[TC015] Starting task count verification test`);
+    await taskPage.navigate();
+    const initialCount = await taskPage.getTaskCount();
 
-    try {
-      await taskPage.navigate();
-      const initialCount = await taskPage.getTaskCount();
-      console.log(`[TC015] Initial count: ${initialCount}`);
+    const task1 = TestData.createTask('Count Test 1');
+    const task2 = TestData.createTask('Count Test 2');
 
-      const task1 = TestData.createTask('Count Test 1');
-      const task2 = TestData.createTask('Count Test 2');
+    await taskPage.addTask(task1.title);
+    await taskPage.addTask(task2.title);
 
-      await taskPage.addTask(task1.title);
-      await taskPage.addTask(task2.title);
-      console.log(`[TC015] Created 2 tasks`);
+    const finalCount = await taskPage.getTaskCount();
 
-      const finalCount = await taskPage.getTaskCount();
-      console.log(`[TC015] Final count: ${finalCount}`);
-
-      expect(finalCount).toBeGreaterThanOrEqual(initialCount + 2);
-      await expect(await taskPage.getTaskByTitle(task1.title)).toBeVisible();
-      await expect(await taskPage.getTaskByTitle(task2.title)).toBeVisible();
-      console.log(`[TC015] PASSED - Task count is accurate`);
-    } catch (error) {
-      console.error(`[TC015] FAILED - Task count verification failed`);
-      console.error(`[TC015] Error: ${getErrorMessage(error)}`);
-      throw error;
-    }
+    expect(finalCount).toBeGreaterThanOrEqual(initialCount + 2);
+    await expect(await taskPage.getTaskByTitle(task1.title)).toBeVisible();
+    await expect(await taskPage.getTaskByTitle(task2.title)).toBeVisible();
   });
 });
 
@@ -48,53 +27,30 @@ test.describe('Task Management - API Only Tests', () => {
     const taskData = TestData.createTask('API Create Task');
     const projects = await taskAPI.getProjects(authToken);
     const inbox = projects.find(p => String(p.title).toLowerCase() === 'inbox') ?? projects[0];
-    const inboxProjectId = inbox.id;
-    console.log(`\n[TC016] Starting API task creation test`);
-    console.log(`[TC016] Task title: "${taskData.title}"`);
 
-    try {
-      const createdTask = await taskAPI.createTask(authToken, {
-        title: taskData.title,
-        project_id: inboxProjectId
-      });
+    const createdTask = await taskAPI.createTask(authToken, {
+      title: taskData.title,
+      project_id: inbox.id,
+    });
 
-      console.log(`[TC016] API Response: ${JSON.stringify(createdTask)}`);
-      expect(createdTask.title).toBe(taskData.title);
-      expect(createdTask.id).toBeDefined();
-      console.log(`[TC016] PASSED - Task created via API with ID: ${createdTask.id}`);
-    } catch (error) {
-      console.error(`[TC016] FAILED - API task creation failed`);
-      console.error(`[TC016] Error: ${getErrorMessage(error)}`);
-      console.error(`[TC016] Task title: "${taskData.title}"`);
-      throw error;
-    }
+    expect(createdTask.title).toBe(taskData.title);
+    expect(createdTask.id).toBeDefined();
   });
 
   test('TC017: Should read task via API', async ({ taskAPI, authToken }) => {
     const taskData = TestData.createTask('API Read Task');
     const projects = await taskAPI.getProjects(authToken);
     const inbox = projects.find(p => String(p.title).toLowerCase() === 'inbox') ?? projects[0];
-    const inboxProjectId = inbox.id;
-    console.log(`\n[TC017] Starting API task read test`);
 
-    try {
-      const createdTask = await taskAPI.createTask(authToken, {
-        title: taskData.title,
-        project_id: inboxProjectId
-      });
-      console.log(`[TC017] Task created with ID: ${createdTask.id}`);
+    const createdTask = await taskAPI.createTask(authToken, {
+      title: taskData.title,
+      project_id: inbox.id,
+    });
 
-      const retrievedTask = await taskAPI.getTask(authToken, createdTask.id);
-      console.log(`[TC017] Task retrieved: ${JSON.stringify(retrievedTask)}`);
+    const retrievedTask = await taskAPI.getTask(authToken, createdTask.id);
 
-      expect(retrievedTask.id).toBe(createdTask.id);
-      expect(retrievedTask.title).toBe(taskData.title);
-      console.log(`[TC017] PASSED - Task read successfully via API`);
-    } catch (error) {
-      console.error(`[TC017] FAILED - API task read failed`);
-      console.error(`[TC017] Error: ${getErrorMessage(error)}`);
-      throw error;
-    }
+    expect(retrievedTask.id).toBe(createdTask.id);
+    expect(retrievedTask.title).toBe(taskData.title);
   });
 
   test('TC018: Should update task via API', async ({ taskAPI, authToken }) => {
@@ -102,89 +58,49 @@ test.describe('Task Management - API Only Tests', () => {
     const updatedTitle = TestData.createUpdatedTask('API Update New').title;
     const projects = await taskAPI.getProjects(authToken);
     const inbox = projects.find(p => String(p.title).toLowerCase() === 'inbox') ?? projects[0];
-    const inboxProjectId = inbox.id;
-    console.log(`\n[TC018] Starting API task update test`);
-    console.log(`[TC018] Original: "${originalTask.title}"`);
-    console.log(`[TC018] Updated: "${updatedTitle}"`);
 
-    try {
-      const createdTask = await taskAPI.createTask(authToken, {
-        title: originalTask.title,
-        project_id: inboxProjectId
-      });
-      console.log(`[TC018] Task created with ID: ${createdTask.id}`);
+    const createdTask = await taskAPI.createTask(authToken, {
+      title: originalTask.title,
+      project_id: inbox.id,
+    });
 
-      const updatedTask = await taskAPI.updateTask(authToken, createdTask.id, {
-        title: updatedTitle
-      });
-      console.log(`[TC018] Task updated: ${JSON.stringify(updatedTask)}`);
+    const updatedTask = await taskAPI.updateTask(authToken, createdTask.id, {
+      title: updatedTitle,
+    });
 
-      expect(updatedTask.title).toBe(updatedTitle);
-      expect(updatedTask.id).toBe(createdTask.id);
-      console.log(`[TC018] PASSED - Task updated successfully via API`);
-    } catch (error) {
-      console.error(`[TC018] FAILED - API task update failed`);
-      console.error(`[TC018] Error: ${getErrorMessage(error)}`);
-      throw error;
-    }
+    expect(updatedTask.title).toBe(updatedTitle);
+    expect(updatedTask.id).toBe(createdTask.id);
   });
 
   test('TC019: Should delete task via API', async ({ taskAPI, authToken }) => {
     const taskData = TestData.createTask('API Delete Task');
     const projects = await taskAPI.getProjects(authToken);
     const inbox = projects.find(p => String(p.title).toLowerCase() === 'inbox') ?? projects[0];
-    const inboxProjectId = inbox.id;
-    console.log(`\n[TC019] Starting API task deletion test`);
 
-    try {
-      const createdTask = await taskAPI.createTask(authToken, {
-        title: taskData.title,
-        project_id: inboxProjectId
-      });
-      console.log(`[TC019] Task created with ID: ${createdTask.id}`);
+    const createdTask = await taskAPI.createTask(authToken, {
+      title: taskData.title,
+      project_id: inbox.id,
+    });
 
-      const statusCode = await taskAPI.deleteTask(authToken, createdTask.id);
-      console.log(`[TC019] Delete status code: ${statusCode}`);
-
-      expect(statusCode).toBe(200);
-      console.log(`[TC019] PASSED - Task deleted successfully via API`);
-    } catch (error) {
-      console.error(`[TC019] FAILED - API task deletion failed`);
-      console.error(`[TC019] Error: ${getErrorMessage(error)}`);
-      throw error;
-    }
+    const statusCode = await taskAPI.deleteTask(authToken, createdTask.id);
+    expect(statusCode).toBe(200);
   });
 
   test('TC020: Should mark task as complete via API', async ({ taskAPI, authToken }) => {
     const taskData = TestData.createTask('API Complete Task');
-    console.log(`\n[TC020] Starting API task completion test`);
-    console.log(`[TC020] Task title: "${taskData.title}"`);
     const projects = await taskAPI.getProjects(authToken);
     const inbox = projects.find(p => String(p.title).toLowerCase() === 'inbox') ?? projects[0];
-    const inboxProjectId = inbox.id;
 
-    try {
-      const createdTask = await taskAPI.createTask(authToken, {
-        title: taskData.title,
-        project_id: inboxProjectId
-      });
-      console.log(`[TC020] Task created with ID: ${createdTask.id}`);
+    const createdTask = await taskAPI.createTask(authToken, {
+      title: taskData.title,
+      project_id: inbox.id,
+    });
 
-      // Mark task as complete
-      const completedTask = await taskAPI.updateTask(authToken, createdTask.id, { done: true });
-      console.log(`[TC020] Task marked complete: done=${completedTask.done}`);
+    const completedTask = await taskAPI.updateTask(authToken, createdTask.id, { done: true });
+    expect(completedTask.done).toBe(true);
+    expect(completedTask.id).toBe(createdTask.id);
 
-      expect(completedTask.done).toBe(true);
-      expect(completedTask.id).toBe(createdTask.id);
-
-      // Verify done status persists by re-fetching
-      const retrievedTask = await taskAPI.getTask(authToken, createdTask.id);
-      expect(retrievedTask.done).toBe(true);
-      console.log(`[TC020] PASSED - Task completion status persists via API`);
-    } catch (error) {
-      console.error(`[TC020] FAILED - API task completion test failed`);
-      console.error(`[TC020] Error: ${getErrorMessage(error)}`);
-      throw error;
-    }
+    const retrievedTask = await taskAPI.getTask(authToken, createdTask.id);
+    expect(retrievedTask.done).toBe(true);
   });
 });

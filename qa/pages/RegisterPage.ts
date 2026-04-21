@@ -1,16 +1,10 @@
 import { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { AuthSelectors } from '../config/page.config';
+import { AuthSelectors } from '../config/selectors/auth.selectors';
+import { envNumber } from '../config/env';
 
-/**
- * Register Page Object
- * Handles user registration operations
- * 
- * @class RegisterPage
- * @extends BasePage
- */
 export class RegisterPage extends BasePage {
-  private static readonly MAX_REGISTER_ATTEMPTS = Number(process.env.REGISTER_MAX_ATTEMPTS ?? '5');
+  private static readonly MAX_REGISTER_ATTEMPTS = envNumber('REGISTER_MAX_ATTEMPTS', 5);
 
   // Lazy-loaded locators for better performance
   private get usernameInput(): Locator {
@@ -31,29 +25,17 @@ export class RegisterPage extends BasePage {
 
   private async isRateLimited(): Promise<boolean> {
     try {
-      await this.page.getByText('Too Many Requests').waitFor({ state: 'visible', timeout: 2000 });
+      await this.page.getByText(AuthSelectors.TOO_MANY_REQUESTS_TEXT).waitFor({ state: 'visible', timeout: 2000 });
       return true;
     } catch {
       return false;
     }
   }
 
-  /**
-   * Navigate to registration page
-   * @returns Promise<void>
-   */
   async navigate(): Promise<void> {
     await this.navigateToUrl(AuthSelectors.REGISTER_ROUTE);
   }
 
-  /**
-   * Perform user registration
-   * @param username - Desired username
-   * @param email - User email address
-   * @param password - User password
-   * @returns Promise<void>
-   * @throws Error if registration fails
-   */
   async register(username: string, email: string, password: string): Promise<void> {
     for (let attempt = 1; attempt <= RegisterPage.MAX_REGISTER_ATTEMPTS; attempt++) {
       await this.waitForVisible(this.usernameInput);

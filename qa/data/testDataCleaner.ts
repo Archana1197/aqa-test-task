@@ -1,9 +1,10 @@
 import { getDatabaseConfig } from '../config/database';
+import { envString } from '../config/env';
 import mysql from 'mysql2/promise';
 
 export async function cleanupE2eUsers(): Promise<void> {
   const config = getDatabaseConfig();
-  const prefix = process.env.TEST_USER_PREFIX ?? 'e2e_user_';
+  const prefix = envString('TEST_USER_PREFIX', 'e2e_user_');
 
   const pool = mysql.createPool({
     host: config.host,
